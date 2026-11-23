@@ -62,7 +62,8 @@ class InferenceEngine:
         last real position. Causal attention means padding never influences earlier positions, so
         the generated tokens match the dynamic loop exactly.
         """
-        length = static_length(self.cfg, len(input_ids) + max_new_tokens)
+        # The last generated token is never fed back, so it needs no slot in the buffer.
+        length = static_length(self.cfg, len(input_ids) + max_new_tokens - 1)
         ids = list(input_ids)
         buf = torch.zeros(1, length, dtype=torch.long)
         buf[0, : len(ids)] = torch.tensor(ids)
@@ -70,6 +71,7 @@ class InferenceEngine:
             last_pos = torch.tensor([len(ids) - 1], dtype=torch.long)
             logits = self.forward(buf.to(self.backend.device), last_pos.to(self.backend.device))
             next_id = int(all_reduce_logits(logits).argmax(-1).item())
-            buf[0, len(ids)] = next_id
+            if len(ids) < length:
+                buf[0, len(ids)] = next_id
             ids.append(next_id)
         return ids
