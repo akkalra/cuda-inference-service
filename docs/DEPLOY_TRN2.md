@@ -17,15 +17,24 @@ PyTorch 2.14, `torch-neuronx` 2.14).
 
 ## 2. Find the TorchNeuron DLAMI
 
+Check that the Region offers `trn2.3xlarge`, then read the DLAMI ID from SSM:
+
 ```bash
-export AWS_REGION=us-east-2   # pick a Region that offers trn2.3xlarge
-aws ec2 describe-images --region $AWS_REGION --owners amazon \
-  --filters "Name=name,Values=*Neuron*PyTorch*2.14*Ubuntu 24.04*" "Name=state,Values=available" \
-  --query 'sort_by(Images,&CreationDate)[-1].[ImageId,Name]' --output text
+export AWS_REGION=<region>
+aws ec2 describe-instance-type-offerings --region $AWS_REGION --location-type availability-zone \
+  --filters Name=instance-type,Values=trn2.3xlarge --query 'InstanceTypeOfferings[].Location' --output text
+aws ssm get-parameter --region $AWS_REGION \
+  --name /aws/service/neuron/dlami/torch-neuronx-2.14.0/ubuntu-24.04/latest/image_id \
+  --query Parameter.Value --output text
 ```
 
-Alternatively, read the SSM parameter for the DLAMI listed in the Neuron docs
-(<https://awsdocs-neuron.readthedocs-hosted.com/en/latest/setup/pytorch/dlami.html>).
+If the first command prints nothing, use a different Region. Also check that the quota
+"Running On-Demand Trn instances" (`L-2C3B7624`) is at least the vCPU count of the instance:
+
+```bash
+aws service-quotas get-service-quota --region $AWS_REGION --service-code ec2 --quota-code L-2C3B7624 \
+  --query Quota.Value
+```
 
 ## 3. Launch the instance
 
