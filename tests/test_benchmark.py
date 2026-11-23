@@ -35,3 +35,14 @@ def test_benchmark_rejects_bad_args(bad):
 def test_percentile():
     assert bench_latency._percentile([1, 2, 3, 4], 0.5) == 2.5
     assert bench_latency._percentile([5], 0.99) == 5
+
+
+def test_benchmark_rejects_float32_with_flash_attention(monkeypatch):
+    from inference.backends import CPUBackend, KernelConfig
+
+    class FlashBackend(CPUBackend):
+        kernels = KernelConfig(rmsnorm="reference", rope="reference", attention="flash")
+
+    monkeypatch.setattr(bench_latency, "get_backend", lambda name=None: FlashBackend())
+    with pytest.raises(ValueError, match="float32"):
+        bench_latency.main(["--preset", "small", "--dtype", "float32", "--batch", "1", "--seq", "8"])

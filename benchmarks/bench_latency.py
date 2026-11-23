@@ -75,6 +75,8 @@ def run(args) -> dict:
     backend = get_backend(args.backend)
     cfg = PRESETS[args.preset]
     dtype = DTYPES[args.dtype] if args.dtype else backend.default_dtype
+    if backend.kernels.attention == "flash" and dtype == torch.float32:
+        raise ValueError("FlashAttention does not support float32. Use --dtype float16 or bfloat16.")
     backend.configure_runtime()
 
     t0 = time.perf_counter()
