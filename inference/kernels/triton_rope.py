@@ -3,6 +3,8 @@ import torch
 import triton
 import triton.language as tl
 
+from inference.kernels.reference import apply_rope_reference  # noqa: F401  (re-exported)
+
 
 @triton.jit
 def _rope_kernel(q_ptr, cos_ptr, sin_ptr, out_ptr,
@@ -34,10 +36,3 @@ def apply_rope_triton(q: torch.Tensor, cos: torch.Tensor, sin: torch.Tensor) -> 
     _rope_kernel[(q2.shape[0],)](q2, cos.contiguous(), sin.contiguous(), out,
                                  s, d, half, q2.stride(0), BLOCK=triton.next_power_of_2(half))
     return out.view(b, h, s, d)
-
-
-def apply_rope_reference(q: torch.Tensor, cos: torch.Tensor, sin: torch.Tensor) -> torch.Tensor:
-    half = q.shape[-1] // 2
-    x1, x2 = q[..., :half].float(), q[..., half:].float()
-    c, s_ = cos[None, None], sin[None, None]
-    return torch.cat([x1 * c - x2 * s_, x2 * c + x1 * s_], dim=-1).to(q.dtype)

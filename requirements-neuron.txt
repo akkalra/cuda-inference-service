@@ -1,0 +1,12 @@
+# AWS Trainium2/3 (TorchNeuron). On the TorchNeuron single-framework DLAMI, torch and torch-neuronx
+# are preinstalled in /opt/aws_neuronx_venv_torch_neuronx_2_14_0; only the service deps are needed.
+# Elsewhere (Ubuntu 26.04 + Neuron apt packages):
+#   pip install -r requirements-neuron.txt --extra-index-url https://pip.repos.neuron.amazonaws.com \
+#       --extra-index-url https://download.pytorch.org/whl/cpu
+torch-neuronx==2.14.*
+neuronx-cc==2.*
+fastapi>=0.110
+uvicorn>=0.29
+pydantic>=2
+pytest>=8
+httpx>=0.27

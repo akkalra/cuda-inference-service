@@ -1,0 +1,31 @@
+# Device-free Trainium2 compile check: lowers the decoder to a Trn2 NEFF with TorchNeuron
+# on any x86_64 Docker host. It cannot execute the model (no Neuron device or runtime).
+#   docker build -f docker/Dockerfile.neuron-compile -t trn2-compile .
+#   docker run --rm trn2-compile                      # pytest -m neuron_compile
+#   docker run --rm trn2-compile python -m benchmarks.neuron_compile_only --batch 1 --seq 128
+# torch-neuronx 2.14 wheels need GLIBC 2.43 (Ubuntu 26.04).
+FROM ubuntu:26.04
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl gnupg \
+        python3 python3-venv libarchive13t64 && \
+    curl -fsSL https://apt.repos.neuron.amazonaws.com/GPG-PUB-KEY-AMAZON-AWS-NEURON.PUB \
+        | gpg --dearmor -o /usr/share/keyrings/neuron.gpg && \
+    echo "deb [signed-by=/usr/share/keyrings/neuron.gpg] https://apt.repos.neuron.amazonaws.com resolute main" \
+        > /etc/apt/sources.list.d/neuron.list && \
+    apt-get update && apt-get install -y --no-install-recommends aws-neuronx-runtime-lib aws-neuronx-collectives && \
+    rm -rf /var/lib/apt/lists/*
+RUN python3 -m venv /venv && /venv/bin/pip install -q --no-cache-dir \
+        "torch-neuronx==2.14.*" "neuronx-cc==2.*" pytest numpy \
+        --extra-index-url https://pip.repos.neuron.amazonaws.com \
+        --extra-index-url https://download.pytorch.org/whl/cpu
+ENV PATH=/venv/bin:$PATH \
+    TORCH_NEURONX_COMPILE_ONLY=1 \
+    NEURON_PLATFORM_TARGET_OVERRIDE=trn2 \
+    NEURON_LOGICAL_NC_CONFIG=2 \
+    NEURON_RT_FAKE_INSTANCE_TYPE=trn2.3xlarge
+WORKDIR /src
+COPY inference inference
+COPY benchmarks benchmarks
+COPY tests tests
+COPY pytest.ini .
+CMD ["python", "-m", "pytest", "-v", "-p", "no:cacheprovider", "-m", "neuron_compile or neuron", "tests/test_neuron.py"]

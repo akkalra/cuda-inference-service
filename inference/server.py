@@ -1,4 +1,4 @@
-"""HTTP inference server."""
+"""HTTP inference server. Select hardware with INFERENCE_BACKEND=auto|cpu|cuda|neuron."""
 from fastapi import FastAPI
 from pydantic import BaseModel
 
@@ -21,7 +21,7 @@ def _startup():
 
 @app.get("/healthz")
 def healthz():
-    return {"ok": engine is not None}
+    return {"ok": engine is not None, "backend": engine.backend.name if engine else None}
 
 
 @app.post("/generate")
