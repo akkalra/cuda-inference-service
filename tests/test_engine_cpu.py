@@ -24,7 +24,7 @@ def test_generate_is_deterministic(tiny_cfg):
     assert eng.generate([5, 6], 6)["output_ids"] == eng.generate([5, 6], 6)["output_ids"]
 
 
-@pytest.mark.parametrize("prompt,new", [([1, 2, 3], 8), (list(range(1, 60)), 10), (list(range(1, 200)), 58)])
+@pytest.mark.parametrize("prompt,new", [([1, 2, 3], 8), (list(range(1, 60)), 10), (list(range(1, 200)), 58), (list(range(1, 66)), 0), (list(range(1, 66)), 1)])
 def test_static_shape_loop_matches_dynamic_loop(tiny_cfg, prompt, new):
     dyn = InferenceEngine(tiny_cfg, backend="cpu").generate(prompt, new)["output_ids"]
     static = InferenceEngine(tiny_cfg, backend=StaticCPUBackend()).generate(prompt, new)["output_ids"]

@@ -63,7 +63,7 @@ class InferenceEngine:
         the generated tokens match the dynamic loop exactly.
         """
         # The last generated token is never fed back, so it needs no slot in the buffer.
-        length = static_length(self.cfg, len(input_ids) + max_new_tokens - 1)
+        length = static_length(self.cfg, len(input_ids) + max(max_new_tokens - 1, 0))
         ids = list(input_ids)
         buf = torch.zeros(1, length, dtype=torch.long)
         buf[0, : len(ids)] = torch.tensor(ids)
