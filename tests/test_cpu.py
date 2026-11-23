@@ -151,3 +151,13 @@ def test_benchmark_runs_on_cpu(capsys):
     r = json.loads(capsys.readouterr().out.strip().splitlines()[-1])
     assert r["correctness"]["top1_agreement"] == 1.0
     assert r["tokens_per_s"] > 0 and r["usd_per_1m_tokens"] > 0
+
+
+def test_benchmark_seq_defaults_to_model_limit(capsys):
+    import json
+
+    from benchmarks.bench_latency import main
+    main(["--device", "cpu", "--model", "tiny", "--batch", "1", "--iters", "1", "--warmup", "0"])
+    assert json.loads(capsys.readouterr().out.strip().splitlines()[-1])["seq"] == 256
+    with pytest.raises(SystemExit):
+        main(["--device", "cpu", "--model", "tiny", "--seq", "512"])

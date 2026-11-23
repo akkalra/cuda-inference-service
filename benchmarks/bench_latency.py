@@ -86,7 +86,7 @@ def main(argv=None):
     p.add_argument("--dtype", default=None, help="float16 | bfloat16 | float32 (default per device)")
     p.add_argument("--model", default="default", choices=sorted(MODELS))
     p.add_argument("--batch", type=int, default=8)
-    p.add_argument("--seq", type=int, default=512)
+    p.add_argument("--seq", type=int, default=None, help="default: min(512, model max_seq_len)")
     p.add_argument("--iters", type=int, default=20)
     p.add_argument("--warmup", type=int, default=3)
     p.add_argument("--instance", default=None, help="price preset from benchmarks/instance_prices.json")
@@ -97,6 +97,9 @@ def main(argv=None):
     device = resolve_device(args.device)
     dtype = resolve_dtype(device, args.dtype)
     cfg = MODELS[args.model]
+    args.seq = args.seq or min(512, cfg.max_seq_len)
+    if args.seq > cfg.max_seq_len:
+        p.error(f"--seq {args.seq} exceeds the {args.model} model's max_seq_len {cfg.max_seq_len}")
     configure_runtime(device)
     model = load_model(cfg, dtype, device)
     gen = torch.Generator().manual_seed(0)
