@@ -1,0 +1,66 @@
+{
+  "_source": "AWS EC2 On-Demand list price, Linux, US East (N. Virginia), from the public AWS pricing data published 2026-11-21. Prices change and vary by region and purchase option (Savings Plans, Spot, Reserved): pass --price-per-hour to use your own.",
+  "_replicas": "Independent model replicas one instance can serve: one per NeuronCore for the single-core traced graph, one per GPU for CUDA. Multiply measured single-replica throughput by this only after confirming the replicas do not contend (host CPU, memory bandwidth).",
+  "instances": {
+    "c7i.xlarge": {
+      "usd_per_hour": 0.1785,
+      "backend": "cpu",
+      "replicas": 1,
+      "accelerators": "4 vCPU (CPU baseline)"
+    },
+    "g5.2xlarge": {
+      "usd_per_hour": 1.212,
+      "backend": "cuda",
+      "replicas": 1,
+      "accelerators": "1x NVIDIA A10G"
+    },
+    "g5.xlarge": {
+      "usd_per_hour": 1.006,
+      "backend": "cuda",
+      "replicas": 1,
+      "accelerators": "1x NVIDIA A10G"
+    },
+    "g6.xlarge": {
+      "usd_per_hour": 0.8048,
+      "backend": "cuda",
+      "replicas": 1,
+      "accelerators": "1x NVIDIA L4"
+    },
+    "inf2.8xlarge": {
+      "usd_per_hour": 1.96786,
+      "backend": "neuron",
+      "replicas": 2,
+      "accelerators": "1x Inferentia2 (2 NeuronCore-v2)"
+    },
+    "inf2.xlarge": {
+      "usd_per_hour": 0.7582,
+      "backend": "neuron",
+      "replicas": 2,
+      "accelerators": "1x Inferentia2 (2 NeuronCore-v2)"
+    },
+    "p4d.24xlarge": {
+      "usd_per_hour": 21.95764,
+      "backend": "cuda",
+      "replicas": 8,
+      "accelerators": "8x NVIDIA A100 40GB"
+    },
+    "p5.48xlarge": {
+      "usd_per_hour": 55.04,
+      "backend": "cuda",
+      "replicas": 8,
+      "accelerators": "8x NVIDIA H100"
+    },
+    "trn1.2xlarge": {
+      "usd_per_hour": 1.34375,
+      "backend": "neuron",
+      "replicas": 2,
+      "accelerators": "1x Trainium (2 NeuronCore-v2)"
+    },
+    "trn1.32xlarge": {
+      "usd_per_hour": 21.5,
+      "backend": "neuron",
+      "replicas": 32,
+      "accelerators": "16x Trainium (32 NeuronCore-v2)"
+    }
+  }
+}

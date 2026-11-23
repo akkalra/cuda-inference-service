@@ -1,11 +1,26 @@
-"""HTTP inference server."""
-from fastapi import FastAPI
+"""HTTP inference server.
+
+Routes: ``/generate`` + ``/healthz`` (service API) and ``/invocations`` + ``/ping``
+(SageMaker bring-your-own-container contract; same handler).
+"""
+from contextlib import asynccontextmanager
+
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
 from inference.engine import InferenceEngine
 
-app = FastAPI(title="cuda-inference-service")
 engine: InferenceEngine | None = None
+
+
+@asynccontextmanager
+async def lifespan(_app):
+    global engine
+    engine = InferenceEngine()
+    yield
+
+
+app = FastAPI(title="inference-service", lifespan=lifespan)
 
 
 class GenerateRequest(BaseModel):
@@ -13,17 +28,16 @@ class GenerateRequest(BaseModel):
     max_new_tokens: int = 32
 
 
-@app.on_event("startup")
-def _startup():
-    global engine
-    engine = InferenceEngine()
-
-
 @app.get("/healthz")
+@app.get("/ping")
 def healthz():
-    return {"ok": engine is not None}
+    return {"ok": engine is not None, "backend": engine.device if engine else None}
 
 
 @app.post("/generate")
+@app.post("/invocations")
 def generate(req: GenerateRequest):
-    return engine.generate(req.input_ids, req.max_new_tokens)
+    try:
+        return engine.generate(req.input_ids, req.max_new_tokens)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
