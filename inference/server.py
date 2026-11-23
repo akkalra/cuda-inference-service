@@ -1,11 +1,13 @@
 """HTTP inference server. Select hardware with INFERENCE_BACKEND=auto|cpu|cuda|neuron."""
+from typing import Optional
+
 from fastapi import FastAPI
 from pydantic import BaseModel
 
 from inference.engine import InferenceEngine
 
 app = FastAPI(title="cuda-inference-service")
-engine: InferenceEngine | None = None
+engine: Optional[InferenceEngine] = None
 
 
 class GenerateRequest(BaseModel):
