@@ -17,7 +17,7 @@ docker run --rm -v $PWD/neuron_artifacts:/out inference-neuron \
 python -m inference.neuron --out ./neuron_artifacts
 ```
 
-At startup the server loads `decoder_b1_s{bucket}.pt` from `NEURON_ARTIFACT_DIR`. If the files are missing, it compiles them, which is slow, so don't rely on that in production.
+At startup the server loads `decoder_<fingerprint>_b1_s{bucket}.pt` from `NEURON_ARTIFACT_DIR`. The fingerprint covers the model config, dtype, kernel selection, compiler flags and torch-neuronx version, so serve with the same settings you compiled with. If the files are missing, it compiles them, which is slow, so don't rely on that in production.
 
 ## 2. EC2
 

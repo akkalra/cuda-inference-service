@@ -14,7 +14,7 @@ torch_neuronx = pytest.importorskip("torch_neuronx")
 
 from inference.kernels.dispatch import KernelConfig  # noqa: E402
 from inference.model import load_model  # noqa: E402
-from inference.neuron import BucketedDecoder, artifact_path, trace_decoder  # noqa: E402
+from inference.neuron import BucketedDecoder, artifact_path, artifact_tag, trace_decoder  # noqa: E402
 
 pytestmark = pytest.mark.neuron_compile
 
@@ -49,5 +49,9 @@ def test_bucketed_artifacts_are_saved(tiny_cfg, tmp_path):
     decoder = BucketedDecoder.compile(model, (128, 256), target="trn1", cpu_backend=True,
                                       artifact_dir=str(tmp_path))
     assert decoder.buckets == (128, 256)
+    tag = artifact_tag(model, "trn1")
     for seq in (128, 256):
-        assert os.path.getsize(artifact_path(str(tmp_path), 1, seq)) > 0
+        assert os.path.getsize(artifact_path(str(tmp_path), 1, seq, tag)) > 0
+    # A different kernel selection must not resolve to the same artifacts.
+    other = load_model(tiny_cfg, torch.bfloat16, "neuron", KernelConfig("nki", "nki", "math"))
+    assert artifact_tag(other, "trn1") != tag

@@ -7,7 +7,9 @@ last_pos [b])`` and returns next-token logits ``[b, vocab]``; causal masking gua
 padded tail cannot change the logits at ``last_pos``.
 
 Compiled graphs are saved with ``torch.jit.save`` so a fleet loads NEFFs instead of
-recompiling at startup (``NEURON_ARTIFACT_DIR``). Compile on any x86 host with
+recompiling at startup (``NEURON_ARTIFACT_DIR``). File names carry a fingerprint of the model
+config, dtype, kernel selection, compiler flags and torch-neuronx version, so a config change
+never silently loads a stale graph. Compile on any x86 host with
 ``cpu_backend=True`` + ``--target``; run on trn1/inf2.
 """
 from __future__ import annotations
@@ -63,8 +65,22 @@ def compiler_args(target: str | None = None) -> list[str]:
     return args
 
 
-def artifact_path(artifact_dir: str, batch: int, seq: int) -> str:
-    return os.path.join(artifact_dir, f"decoder_b{batch}_s{seq}.pt")
+def artifact_tag(model, target: str | None = None) -> str:
+    """Fingerprint of everything that changes the compiled graph besides its shape."""
+    import hashlib
+
+    try:
+        import torch_neuronx
+        neuronx_version = torch_neuronx.__version__
+    except ImportError:
+        neuronx_version = "none"
+    dtype = next(model.parameters()).dtype
+    key = repr((model.cfg, model.kernels, dtype, compiler_args(target), neuronx_version))
+    return hashlib.sha256(key.encode()).hexdigest()[:12]
+
+
+def artifact_path(artifact_dir: str, batch: int, seq: int, tag: str) -> str:
+    return os.path.join(artifact_dir, f"decoder_{tag}_b{batch}_s{seq}.pt")
 
 
 def trace_decoder(model: torch.nn.Module, batch: int, seq: int, target: str | None = None,
@@ -104,26 +120,28 @@ class BucketedDecoder:
     def compile(cls, model, buckets, batch_size: int = 1, target: str | None = None,
                 cpu_backend: bool = False, artifact_dir: str | None = None) -> "BucketedDecoder":
         graphs = {}
+        tag = artifact_tag(model, target)
         for seq in buckets:
             graphs[seq] = trace_decoder(model, batch_size, seq, target=target, cpu_backend=cpu_backend)
             if artifact_dir:
                 os.makedirs(artifact_dir, exist_ok=True)
-                torch.jit.save(graphs[seq], artifact_path(artifact_dir, batch_size, seq))
+                torch.jit.save(graphs[seq], artifact_path(artifact_dir, batch_size, seq, tag))
         return cls(graphs, batch_size)
 
     @classmethod
-    def load(cls, artifact_dir: str, buckets, batch_size: int = 1) -> "BucketedDecoder":
+    def load(cls, artifact_dir: str, buckets, tag: str, batch_size: int = 1) -> "BucketedDecoder":
         import torch_neuronx  # noqa: F401  registers the Neuron ops needed to deserialize graphs
 
-        return cls({seq: torch.jit.load(artifact_path(artifact_dir, batch_size, seq)) for seq in buckets},
+        return cls({seq: torch.jit.load(artifact_path(artifact_dir, batch_size, seq, tag)) for seq in buckets},
                    batch_size)
 
     @classmethod
     def load_or_compile(cls, model, buckets, batch_size: int = 1, artifact_dir: str | None = None,
                         target: str | None = None) -> "BucketedDecoder":
         artifact_dir = artifact_dir or os.environ.get(ARTIFACT_DIR_ENV)
-        if artifact_dir and all(os.path.exists(artifact_path(artifact_dir, batch_size, s)) for s in buckets):
-            return cls.load(artifact_dir, buckets, batch_size)
+        tag = artifact_tag(model, target)
+        if artifact_dir and all(os.path.exists(artifact_path(artifact_dir, batch_size, s, tag)) for s in buckets):
+            return cls.load(artifact_dir, buckets, tag, batch_size)
         return cls.compile(model, buckets, batch_size, target=target, artifact_dir=artifact_dir)
 
 
