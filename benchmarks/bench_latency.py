@@ -97,9 +97,10 @@ def main(argv=None):
     device = resolve_device(args.device)
     dtype = resolve_dtype(device, args.dtype)
     cfg = MODELS[args.model]
-    args.seq = args.seq or min(512, cfg.max_seq_len)
-    if args.seq > cfg.max_seq_len:
-        p.error(f"--seq {args.seq} exceeds the {args.model} model's max_seq_len {cfg.max_seq_len}")
+    if args.seq is None:
+        args.seq = min(512, cfg.max_seq_len)
+    if not 1 <= args.seq <= cfg.max_seq_len:
+        p.error(f"--seq must be in [1, {cfg.max_seq_len}] for the {args.model} model, got {args.seq}")
     configure_runtime(device)
     model = load_model(cfg, dtype, device)
     gen = torch.Generator().manual_seed(0)

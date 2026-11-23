@@ -159,5 +159,6 @@ def test_benchmark_seq_defaults_to_model_limit(capsys):
     from benchmarks.bench_latency import main
     main(["--device", "cpu", "--model", "tiny", "--batch", "1", "--iters", "1", "--warmup", "0"])
     assert json.loads(capsys.readouterr().out.strip().splitlines()[-1])["seq"] == 256
-    with pytest.raises(SystemExit):
-        main(["--device", "cpu", "--model", "tiny", "--seq", "512"])
+    for bad in ("512", "0"):
+        with pytest.raises(SystemExit):
+            main(["--device", "cpu", "--model", "tiny", "--seq", bad])
