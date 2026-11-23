@@ -109,10 +109,10 @@ def main(argv=None):
     forward = build_forward(model, device, args.batch, args.seq, args.target)
     for _ in range(args.warmup):
         logits = forward(ids, last)
-    stream = torch.cuda.Stream() if device == "cuda" else None
+    # Time on the current stream, the same one setup and warmup ran on, so CUDA work stays ordered.
     times = []
     for _ in range(args.iters):
-        with DeviceTimer(device, stream) as t:
+        with DeviceTimer(device) as t:
             logits = forward(ids, last)
         times.append(t.elapsed_ms)
 
