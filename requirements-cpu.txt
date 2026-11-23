@@ -1,0 +1,9 @@
+# CPU-only (CI / laptops): no CUDA toolkit or Triton needed.
+#   pip install -r requirements-cpu.txt --extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.4.1
+numpy<2
+fastapi>=0.110
+uvicorn>=0.29
+pydantic>=2
+pytest>=8
+httpx>=0.27

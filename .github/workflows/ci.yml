@@ -1,0 +1,26 @@
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  cpu-tests:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -r requirements-cpu.txt --extra-index-url https://download.pytorch.org/whl/cpu
+      - run: python -m pytest -v
+      - run: python -m benchmarks.bench_latency --backend cpu --preset small --batch 2 --seq 64 --iters 5
+
+  trn2-compile-only:
+    # Lowers the decoder to a Trainium2 NEFF without Neuron hardware. No execution.
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -f docker/Dockerfile.neuron-compile -t trn2-compile .
+      - run: docker run --rm trn2-compile
+      - run: docker run --rm trn2-compile python -m benchmarks.neuron_compile_only --batch 1 --seq 128 --last-pos
