@@ -17,13 +17,13 @@ All results below come from this branch. Nothing was run on an NVIDIA GPU or on 
 python -m pytest -v
 ```
 
-Result: **39 passed, 7 skipped**.
+Result: **41 passed, 7 skipped**.
 
 - Passed: backend selection and errors (including compile-only is not a device), kernel configs,
   model shapes, parameter count (168,313,856), math attention vs SDPA, Neuron kernel config vs
   CPU kernel config, `last_pos` gather, right-padding invariance, bf16 vs fp32 closeness,
-  CPU generation, static generation = dynamic generation, `static_length`, FastAPI `/healthz` and
-  `/generate`, benchmark output and argument checks.
+  CPU generation, static generation = dynamic generation (including a full-context request), `static_length`, FastAPI `/healthz` and
+  `/generate`, benchmark output and argument checks (including float32 + FlashAttention rejection).
 - Skipped (no hardware): 3 CUDA tests (`test_fused_rmsnorm_matches_reference`,
   `test_triton_rope_matches_reference`, `test_generate_smoke`), 3 Neuron execution tests
   (`test_neuron_forward_matches_cpu_reference[torch.compile|eager]`, `test_neuron_generate`) and
