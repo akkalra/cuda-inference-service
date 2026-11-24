@@ -4,13 +4,14 @@ Routes: ``/generate`` + ``/healthz`` (service API) and ``/invocations`` + ``/pin
 (SageMaker bring-your-own-container contract; same handler).
 """
 from contextlib import asynccontextmanager
+from typing import Optional
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
 from inference.engine import InferenceEngine
 
-engine: InferenceEngine | None = None
+engine: Optional[InferenceEngine] = None
 
 
 @asynccontextmanager
