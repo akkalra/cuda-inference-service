@@ -3,3 +3,10 @@ __pycache__/
 .pytest_cache/
 build/
 *.so
+
+# Neuron compile artifacts
+neuron_artifacts/
+compiler_workdir/
+*.neff
+global_metric_store.json
+log-neuron-cc.txt

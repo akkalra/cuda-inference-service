@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  cpu-tests:
+    name: CPU tests (torch ${{ matrix.torch }})
+    runs-on: ubuntu-22.04
+    strategy:
+      matrix:
+        include:
+          - python: "3.11"
+            torch: "2.4.1"   # the CUDA path's pinned torch
+          - python: "3.12"
+            torch: "2.9.1"   # torch-neuronx 2.9's torch
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install
+        run: |
+          pip install torch==${{ matrix.torch }} --index-url https://download.pytorch.org/whl/cpu
+          pip install -r requirements-base.txt -r requirements-dev.txt
+      - name: Test
+        run: pytest -q -rs tests/
+
+  neuron-toolchain:
+    name: Neuron toolchain (NKI simulator + trn1/inf2 compile, no device)
+    runs-on: ubuntu-22.04
+    env:
+      NEURON_PLATFORM_TARGET_OVERRIDE: trn1
+      NEURON_LOGICAL_NC_CONFIG: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install Neuron runtime library (needed by torch-xla import, not a device)
+        run: |
+          echo "deb https://apt.repos.neuron.amazonaws.com jammy main" | sudo tee /etc/apt/sources.list.d/neuron.list
+          wget -qO - https://apt.repos.neuron.amazonaws.com/GPG-PUB-KEY-AMAZON-AWS-NEURON.PUB | sudo apt-key add -
+          sudo apt-get update -q
+          sudo apt-get install -y -q aws-neuronx-runtime-lib aws-neuronx-collectives
+      - name: Install Neuron Python packages
+        run: |
+          pip install --extra-index-url https://pip.repos.neuron.amazonaws.com -r requirements-neuron.txt -r requirements-dev.txt
+          pip list | grep -Ei "^(torch|torch-neuronx|torch-xla|neuronx-cc|nki|libneuronxla) "
+      - name: NKI kernels vs references (NKI CPU simulator)
+        run: pytest -v -rs tests/test_nki_simulator.py
+      - name: Compile decoder for trn1 and inf2 (torch_neuronx.trace, cpu_backend)
+        run: |
+          export LD_LIBRARY_PATH="$(python -c 'import sysconfig; print(sysconfig.get_config_var("LIBDIR"))'):${LD_LIBRARY_PATH}"
+          pytest -v -rs tests/test_neuron_compile.py
+      - name: CPU tests under the Neuron stack
+        run: pytest -q -rs tests/test_cpu.py

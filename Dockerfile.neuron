@@ -1,0 +1,25 @@
+# AWS Trainium (trn1) / Inferentia2 (inf2) image, built on the AWS Neuron PyTorch inference DLC.
+# The DLC ships Python 3.12, torch-neuronx 2.9.0.2.15 and the Neuron runtime/tools.
+# Catalog: https://github.com/aws-neuron/deep-learning-containers#pytorch-inference-neuronx
+# Neuron SDK 2.31.x is the last release that publishes this DLC; pin the tag, don't use :latest.
+FROM public.ecr.aws/neuron/pytorch-inference-neuronx:2.9.0-neuronx-py312-sdk2.31.1-ubuntu24.04
+
+WORKDIR /app
+COPY requirements-base.txt requirements-neuron.txt ./
+# Align neuronx-cc / nki with the versions CI validates (the DLC bundles slightly older ones).
+RUN pip install --no-cache-dir --extra-index-url https://pip.repos.neuron.amazonaws.com -r requirements-neuron.txt
+COPY inference ./inference
+COPY benchmarks ./benchmarks
+
+ENV INFERENCE_DEVICE=neuron \
+    NEURON_SEQ_BUCKETS=128,256,512,1024,2048 \
+    NEURON_ARTIFACT_DIR=/opt/ml/model/neuron_artifacts \
+    NEURON_RT_NUM_CORES=1
+# SageMaker starts containers as `docker run <image> serve`. The DLC's entrypoint routes `serve`
+# to its own TorchServe stack, so replace it: `serve` here starts this FastAPI app.
+# Port 8080 + /ping + /invocations is the SageMaker container contract; plain EC2 works the same.
+RUN printf '#!/bin/sh\nexec uvicorn inference.server:app --host 0.0.0.0 --port 8080\n' > /usr/local/bin/serve \
+ && chmod +x /usr/local/bin/serve
+EXPOSE 8080
+ENTRYPOINT []
+CMD ["serve"]

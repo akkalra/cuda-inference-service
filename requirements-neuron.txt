@@ -1,0 +1,10 @@
+# AWS Neuron backend (trn1 / inf2). Install with:
+#   pip install --extra-index-url https://pip.repos.neuron.amazonaws.com -r requirements-neuron.txt
+# torch-neuronx 2.9 (PyTorch/XLA) is the documented inference path for NeuronCore-v2 (trn1/inf2).
+# Versions are the ones this repo's CI compiles and simulates with; the Neuron DLC in
+# Dockerfile.neuron ships the same torch-neuronx build.
+-r requirements-base.txt
+torch-neuronx==2.9.0.2.15.32035
+neuronx-cc==2.28.7631.0
+nki==0.7.0
+ml_dtypes

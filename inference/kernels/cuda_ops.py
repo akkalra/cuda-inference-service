@@ -4,6 +4,8 @@ import os
 import torch
 from torch.utils.cpp_extension import load
 
+from inference.kernels.reference import rmsnorm_reference  # noqa: F401  (re-exported)
+
 _CSRC = os.path.join(os.path.dirname(__file__), "..", "..", "csrc")
 _ext = None
 
@@ -25,8 +27,3 @@ def fused_rmsnorm(x: torch.Tensor, weight: torch.Tensor, eps: float = 1e-6) -> t
     out = torch.empty_like(x)
     _load().fused_rmsnorm(out, x.contiguous(), weight, eps)
     return out
-
-
-def rmsnorm_reference(x: torch.Tensor, weight: torch.Tensor, eps: float = 1e-6) -> torch.Tensor:
-    xf = x.float()
-    return (xf * torch.rsqrt(xf.pow(2).mean(-1, keepdim=True) + eps)).to(x.dtype) * weight

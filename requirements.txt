@@ -1,6 +1,5 @@
+# NVIDIA CUDA backend (unchanged from the original service).
+-r requirements-base.txt
 torch==2.4.1
 triton==3.0.0
-fastapi>=0.110
-uvicorn>=0.29
-pydantic>=2
 pytest>=8
