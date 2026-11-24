@@ -10,8 +10,9 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-PYTHON="${PYTHON:-python3}"
-NEURON_PYTHON="${NEURON_PYTHON:-$HOME/.venvs/neuron/bin/python}"
+# Resolve to absolute paths up front so later PATH changes cannot swap interpreters.
+PYTHON="$(command -v "${PYTHON:-python3}")"
+NEURON_PYTHON="$(command -v "${NEURON_PYTHON:-$HOME/.venvs/neuron/bin/python}" || true)"
 PAUSE="${DEMO_PAUSE:-1}"
 export INFERENCE_DEVICE=cpu PYTHONWARNINGS=ignore
 
@@ -23,7 +24,13 @@ step() {
   echo; echo "${bold}${cyan}== $1 ==${reset}"; echo "${dim}$2${reset}"
   if [ "$PAUSE" = "1" ]; then read -r -p "${dim}[Enter]${reset} " _; fi
 }
-run() { echo "${green}\$ $*${reset}" >&2; "$@"; }
+show() {  # print the command with interpreter paths shortened for readability
+  local cmd="$*"
+  cmd="${cmd//"$PYTHON"/python}"
+  [ -n "$NEURON_PYTHON" ] && cmd="${cmd//"$NEURON_PYTHON"/python[neuron]}"
+  echo "${green}\$ ${cmd}${reset}" >&2
+}
+run() { show "$@"; "$@"; }
 
 step "1. Before: the CUDA-only pieces in main" \
      "Every NVIDIA-specific construct the original service depended on."
@@ -43,7 +50,8 @@ step "3. CPU test suite (what every PR runs in GitHub Actions)" \
      "Device selection, reference kernels, attention parity, bucketing, engine, HTTP API, benchmark."
 run "$PYTHON" -m pytest -q tests/test_cpu.py
 
-if [ -x "$NEURON_PYTHON" ] && [ "$(uname -s)-$(uname -m)" = "Linux-x86_64" ]; then
+if [ -n "$NEURON_PYTHON" ] && [ "$(uname -s)-$(uname -m)" = "Linux-x86_64" ]; then
+  (  # subshell: the Neuron env settings below must not leak into later steps
   NEURON_BIN="$(dirname "$NEURON_PYTHON")"
   export PATH="$NEURON_BIN:$PATH" NEURON_PLATFORM_TARGET_OVERRIDE=trn1 NEURON_LOGICAL_NC_CONFIG=1
   LD_LIBRARY_PATH="$("$NEURON_PYTHON" -c 'import sysconfig; print(sysconfig.get_config_var("LIBDIR"))'):${LD_LIBRARY_PATH:-}"
@@ -56,6 +64,7 @@ if [ -x "$NEURON_PYTHON" ] && [ "$(uname -s)-$(uname -m)" = "Linux-x86_64" ]; th
   step "5. Compile the whole model for Trainium and Inferentia2" \
        "torch_neuronx.trace(cpu_backend=True) -> a NEFF binary for --target trn1 and inf2."
   run "$NEURON_PYTHON" -m pytest -v -p no:warnings tests/test_neuron_compile.py
+  )
 else
   step "4-5. NKI simulator + Neuron compile: skipped" \
        "${yellow}The Neuron toolchain installs only on x86-64 Linux. See the 'Neuron toolchain' job in CI.${reset}"
